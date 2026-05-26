@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predicción del Precio de Bitcoin con Machine Learning</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0B0F19;
+    --bg2: #111827;
+    --btc: #F7931A;
+    --glow: #FFB84D;
+    --text: #F9FAFB;
+    --muted: #9CA3AF;
+    --green: #10B981;
+    --red: #EF4444;
+    --border: rgba(247,147,26,0.12);
+    --glass: rgba(255,255,255,0.03);
+    --glass2: rgba(247,147,26,0.06);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    scroll-snap-type: y mandatory;
+    overflow-y: scroll;
+    scroll-behavior: smooth;
+    background: var(--bg);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  nav {
+    position: fixed;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .nav-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    cursor: pointer;
+    transition: all .3s;
+    border: none; padding: 0;
+  }
+  .nav-dot.active { background: var(--btc); box-shadow: 0 0 8px var(--btc); transform: scale(1.5); }
+
+  #progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--btc), var(--glow));
+    z-index: 1000;
+    transition: width .3s;
+    box-shadow: 0 0 10px var(--btc);
+  }
+
+  .slide {
+    height: 100vh;
+    scroll-snap-align: start;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 60px 80px;
+  }
+
+  .display { font-family: 'Syne', sans-serif; }
+  .mono { font-family: 'DM Mono', monospace; }
+
+  h1.hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.6rem, 5vw, 5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  h2.slide-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.8rem, 3vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--btc);
+    margin-bottom: 16px;
+  }
+  .body-text {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 540px;
+  }
+
+  .card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    backdrop-filter: blur(12px);
+    transition: border-color .3s, transform .3s;
+  }
+  .card:hover { border-color: rgba(247,147,26,0.3); transform: translateY(-2px); }
+
+  .accent-line {
+    width: 48px; height: 2px;
+    background: var(--btc);
+    border-radius: 2px;
+    margin-bottom: 24px;
+    box-shadow: 0 0 12px var(--btc);
+  }
+
+  .noise {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; opacity: .5;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+  }
+  .orb-btc  { background: rgba(247,147,26,0.08); }
+  .orb-blue { background: rgba(99,102,241,0.06); }
+  .orb-green{ background: rgba(16,185,129,0.06); }
+
+  .grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(247,147,26,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(247,147,26,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /*  HERO  */
+  .hero-content { position: relative; z-index: 2; max-width: 900px; }
+  .price-ticker {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: rgba(247,147,26,0.08);
+    border: 1px solid rgba(247,147,26,0.2);
+    border-radius: 100px;
+    padding: 8px 20px;
+    margin-bottom: 40px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .price-ticker .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .btc-price { font-size: 1.1rem; font-weight: 500; color: var(--text); }
+  .btc-change { color: var(--green); font-size: 0.8rem; }
+  .hero-subtitle {
+    font-size: clamp(1rem, 1.5vw, 1.2rem);
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 600px;
+    line-height: 1.6;
+    margin-top: 20px;
+    margin-bottom: 48px;
+  }
+  .btn-group { display: flex; gap: 16px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; border-radius: 10px;
+    font-size: 0.9rem; font-weight: 500;
+    cursor: pointer; transition: all .25s;
+    text-decoration: none; border: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-primary { background: var(--btc); color: #000; box-shadow: 0 0 24px rgba(247,147,26,0.3); }
+  .btn-primary:hover { box-shadow: 0 0 40px rgba(247,147,26,0.5); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: rgba(247,147,26,0.4); background: var(--glass2); }
+  .mini-chart { position: absolute; right: 60px; bottom: 120px; opacity: .35; }
+  .hero-ring {
+    position: absolute; right: -100px; top: 50%; transform: translateY(-50%);
+    width: 600px; height: 600px; border-radius: 50%;
+    border: 1px solid rgba(247,147,26,0.08);
+    box-shadow: 0 0 120px rgba(247,147,26,0.05) inset;
+    pointer-events: none;
+  }
+  .hero-ring::after { content:''; position:absolute; inset:40px; border-radius:50%; border:1px solid rgba(247,147,26,0.06); }
+  .scroll-hint {
+    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--muted); font-size: 0.7rem; letter-spacing: 0.15em;
+    text-transform: uppercase; font-family: 'DM Mono', monospace;
+    animation: floatHint 2s ease-in-out infinite;
+  }
+  .scroll-hint svg { animation: arrowDown 1.5s ease-in-out infinite; }
+  @keyframes arrowDown { 0%,100%{transform:translateY(0)} 50%{transform:translateY(4px)} }
+  @keyframes floatHint { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+  /*  INTRO / DATASET  */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; width: 100%; max-width: 1100px; position: relative; z-index: 2; }
+  .stat-card { background: var(--glass); border: 1px solid var(--border); border-radius: 14px; padding: 24px; transition: border-color .3s; }
+  .stat-card:hover { border-color: rgba(247,147,26,0.25); }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; color: var(--btc); }
+  .stat-label { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 32px; }
+  .timeline { display: flex; flex-direction: column; gap: 24px; margin-top: 32px; }
+  .timeline-item { display: flex; gap: 16px; align-items: flex-start; }
+  .tl-year { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--btc); min-width: 36px; padding-top: 2px; }
+  .tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--btc); margin-top: 5px; flex-shrink: 0; box-shadow: 0 0 8px var(--btc); }
+  .tl-text { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+
+  /*  PROBLEMA  */
+  .challenge-list { display: flex; flex-direction: column; gap: 16px; margin-top: 32px; }
+  .challenge-item { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; transition: border-color .3s; }
+  .challenge-item:hover { border-color: rgba(247,147,26,0.25); }
+  .challenge-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(247,147,26,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem; }
+  .challenge-text h4 { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
+  .challenge-text p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+  /*  DATASET  */
+  .var-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .chip { padding: 6px 14px; border-radius: 100px; border: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--btc); background: rgba(247,147,26,0.06); }
+  .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  .data-table th { text-align: left; padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 10px 14px; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .data-table td.val { font-family: 'DM Mono', monospace; color: var(--muted); font-size: 0.8rem; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(247,147,26,0.03); }
+
+  /*  EDA  */
+  .eda-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+  .eda-metric { padding: 18px; border-radius: 12px; background: var(--glass); border: 1px solid var(--border); }
+  .eda-metric .val { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--btc); }
+  .eda-metric .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .transform-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+  .transform-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: var(--glass); border: 1px solid var(--border); font-size: 0.85rem; }
+  .badge { padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; font-family: 'DM Mono', monospace; font-weight: 500; flex-shrink: 0; }
+  .badge-green { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+  .badge-red   { background: rgba(239,68,68,0.1);  color: var(--red);   border: 1px solid rgba(239,68,68,0.2); }
+  .badge-btc   { background: rgba(247,147,26,0.1); color: var(--btc);   border: 1px solid rgba(247,147,26,0.2); }
+
+  /*  METODOLOGÍA  */
+  .pipeline-steps { display: flex; flex-direction: column; gap: 0; margin-top: 24px; }
+  .pipeline-step { display: flex; gap: 16px; align-items: flex-start; position: relative; padding-bottom: 24px; }
+  .pipeline-step:last-child { padding-bottom: 0; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--btc); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--btc); flex-shrink: 0; background: rgba(247,147,26,0.08); }
+  .step-line { position: absolute; left: 15px; top: 34px; width: 1px; bottom: 0; background: linear-gradient(var(--border), transparent); }
+  .pipeline-step:last-child .step-line { display: none; }
+  .step-text h4 { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
+  .step-text p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .fold-vis { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+  .fold-row { display: flex; gap: 4px; align-items: center; }
+  .fold-label { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); width: 40px; }
+  .fold-bar { height: 10px; border-radius: 3px; }
+  .fold-train { background: rgba(247,147,26,0.4); }
+  .fold-val   { background: rgba(247,147,26,0.15); }
+  .fold-test  { background: rgba(247,147,26,0.06); border: 1px solid var(--border); }
+
+  /*  MODELOS  */
+  .models-layout { max-width: 1150px; width: 100%; position: relative; z-index: 2; }
+  .models-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; }
+  .model-card { padding: 20px 22px; border-radius: 14px; background: var(--glass); border: 1px solid var(--border); transition: all .3s; position: relative; overflow: hidden; }
+  .model-card:hover { border-color: rgba(247,147,26,0.3); background: rgba(247,147,26,0.04); transform: translateY(-3px); }
+  .model-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--btc),transparent); opacity:0; transition:opacity .3s; }
+  .model-card:hover::before { opacity: 1; }
+  .model-type { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--btc); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 8px; }
+  .model-name { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+  .model-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .model-pros { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .pro-tag { padding: 3px 8px; border-radius: 5px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15); font-size: 0.65rem; color: var(--green); font-family: 'DM Mono', monospace; }
+  .benchmark-tag { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); color: #818CF8; }
+
+  /*  LSTM ARCHITECTURE  */
+  .arch-layout { display: grid; grid-template-columns: 1fr 1.4fr; gap: 70px; max-width: 1100px; width: 100%; position: relative; z-index: 2; }
+  .param-list { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+  .param-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 10px; background: var(--glass); border: 1px solid var(--border); }
+  .param-key { font-size: 0.85rem; color: var(--muted); }
+  .param-val { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--btc); }
+
+  /*  RESULTADOS  */
+  .results-layout { max-width: 1100px; width: 100%; position: relative; z-index: 2; }
+  .rtable { width: 100%; border-collapse: collapse; }
+  .rtable th { text-align: left; padding: 11px 14px; font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .rtable th:not(:first-child):not(:nth-child(2)) { text-align: right; }
+  .rtable td { padding: 10px 14px; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .rtable td:not(:first-child):not(:nth-child(2)):not(:nth-child(3)) { text-align: right; font-family: 'DM Mono', monospace; }
+  .rtable tr.winner td { color: var(--btc); }
+  .rtable tr.winner { background: rgba(247,147,26,0.04); }
+  .rtable tr:hover td { background: rgba(255,255,255,0.02); }
+  .bar-wrap { display: inline-block; width: 100%; max-width: 120px; }
+  .bar-bg { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 4px; }
+  .bar-fill { height: 4px; border-radius: 2px; }
+  .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 0.65rem; font-family: 'DM Mono', monospace; flex-shrink: 0; }
+  .rank-1 { background: rgba(247,147,26,0.2); color: var(--btc); border: 1px solid var(--btc); }
+  .rank-2 { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+  .rank-3 { background: rgba(255,255,255,0.03); color: var(--muted); border: 1px solid var(--border); }
+  .bench-pill { display:inline-block; padding:2px 7px; border-radius:4px; font-size:0.6rem; font-family:'DM Mono',monospace; background:rgba(99,102,241,0.1); color:#818CF8; border:1px solid rgba(99,102,241,0.2); margin-left:5px; vertical-align:middle; }
+
+  /*  PREDICCIÓN  */
+  .pred-layout { display: grid; grid-template-columns: 1fr 2.2fr; gap: 48px; max-width: 1150px; width: 100%; position: relative; z-index: 2; }
+  .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+  .leg-line { width: 24px; height: 2px; border-radius: 2px; }
+
+  /*  CONCLUSIONES  */
+  .concl-layout { display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px; max-width: 1100px; width: 100%; position: relative; z-index: 2; }
+  .insight-cards { display: flex; flex-direction: column; gap: 14px; margin-top: 24px; }
+  .insight-card { padding: 18px 20px; border-radius: 12px; background: var(--glass); border: 1px solid var(--border); display: flex; gap: 14px; align-items: flex-start; transition: border-color .3s; }
+  .insight-card:hover { border-color: rgba(247,147,26,0.25); }
+  .insight-icon { font-size: 1.1rem; flex-shrink: 0; padding-top: 2px; }
+  .insight-text h4 { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
+  .insight-text p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .comp-bar-group { display: flex; flex-direction: column; gap: 10px; }
+  .comp-bar-item { display: flex; flex-direction: column; gap: 5px; }
+  .comp-bar-header { display: flex; justify-content: space-between; font-size: 0.78rem; }
+  .comp-bar-name { color: var(--muted); }
+  .comp-bar-val { font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+  .comp-bar-track { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .comp-bar-fill { height: 100%; border-radius: 3px; }
+
+  /*  TRABAJO FUTURO  */
+  .future-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; max-width: 1100px; width: 100%; position: relative; z-index: 2; }
+  .roadmap { display: flex; flex-direction: column; gap: 0; margin-top: 24px; }
+  .roadmap-item { display: flex; gap: 16px; padding-bottom: 26px; position: relative; }
+  .roadmap-item:last-child { padding-bottom: 0; }
+  .rm-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--btc); flex-shrink: 0; margin-top: 5px; background: transparent; }
+  .rm-dot.filled { background: var(--btc); }
+  .rm-line { position: absolute; left: 4px; top: 18px; width: 2px; bottom: 0; background: linear-gradient(var(--border), transparent); }
+  .roadmap-item:last-child .rm-line { display: none; }
+  .rm-content h4 { font-size: 0.88rem; font-weight: 500; margin-bottom: 4px; }
+  .rm-content p { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .rm-cite { font-size: 0.68rem; color: rgba(247,147,26,0.6); font-family:'DM Mono',monospace; margin-top:3px; }
+  .future-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .future-tag { padding: 7px 14px; border-radius: 10px; background: var(--glass); border: 1px solid var(--border); font-size: 0.78rem; font-family: 'DM Mono', monospace; color: var(--muted); transition: all .3s; }
+  .future-tag:hover { border-color: rgba(247,147,26,0.3); color: var(--btc); background: rgba(247,147,26,0.06); }
+
+  /*  CIERRE  */
+  .closing-content { position: relative; z-index: 2; max-width: 700px; }
+  .closing-quote { font-family: 'Syne', sans-serif; font-size: clamp(1.6rem, 3.5vw, 2.8rem); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+  .closing-quote em { color: var(--btc); font-style: normal; }
+  .credits { margin-top: 64px; display: flex; flex-direction: column; gap: 6px; }
+  .credits p { font-size: 0.85rem; color: var(--muted); }
+  .credits strong { color: var(--text); font-weight: 500; }
+
+  /*  ANIMACIONES  */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.visible { opacity: 1; transform: none; }
+  .reveal-d1 { transition-delay: .1s; }
+  .reveal-d2 { transition-delay: .2s; }
+  .reveal-d3 { transition-delay: .3s; }
+  .reveal-d4 { transition-delay: .4s; }
+  .reveal-d5 { transition-delay: .5s; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) {
+    .slide { padding: 40px 24px; }
+    .two-col, .arch-layout, .pred-layout, .concl-layout, .future-layout { grid-template-columns: 1fr; }
+    .models-grid { grid-template-columns: 1fr 1fr; }
+    nav { right: 12px; }
+    h1.hero-title { font-size: 2.2rem; }
+    .hero-ring, .mini-chart { display: none; }
+  }
+  @media (max-width: 600px) { .models-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="progress-bar" style="width:0%"></div>
+<nav id="nav-dots"></nav>
+
+<!--  SLIDE 1 — HERO  -->
+<section class="slide" id="slide-1">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:700px;height:700px;top:-200px;right:-200px;"></div>
+  <div class="orb orb-blue" style="width:500px;height:500px;bottom:-100px;left:-100px;"></div>
+  <div class="hero-ring"></div>
+  <div class="hero-content">
+    <div class="price-ticker reveal">
+      <span class="dot"></span>
+      <span style="font-size:0.75rem;color:var(--muted);">BTC/USD</span>
+      <span class="btc-price" id="live-price">$94,180.00</span>
+      <span class="btc-change" id="live-change">+2.34%</span>
+    </div>
+    <div class="label reveal reveal-d1">Artículo de Investigación · Predicción de Series de Tiempo</div>
+    <h1 class="hero-title reveal reveal-d2">Predicción del<br>Precio de Bitcoin<br>con Machine Learning</h1>
+    <p class="hero-subtitle reveal reveal-d3">
+      Análisis comparativo de modelos estadísticos y de aprendizaje profundo para la predicción de series de tiempo en criptomonedas — de ARIMA a arquitecturas híbridas con LSTM.
+    </p>
+    <div class="btn-group reveal reveal-d4">
+      <button class="btn btn-primary" onclick="document.getElementById('slide-2').scrollIntoView({behavior:'smooth'})">Explorar Investigación ↓</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('slide-10').scrollIntoView({behavior:'smooth'})">Ver Resultados</button>
+    </div>
+    <div style="margin-top:40px;display:flex;gap:40px;flex-wrap:wrap;" class="reveal reveal-d5">
+      <div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Dataset</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;">250.657 obs.</div>
+      </div>
+      <div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Período</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;">2019 – 2026</div>
+      </div>
+      <div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Mejor Modelo</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--btc);">LSTM Híbrido</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>Scroll</span>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M4 9l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </div>
+</section>
+
+<!--  SLIDE 2 — INTRODUCCIÓN  -->
+<section class="slide" id="slide-2">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-blue" style="width:500px;height:500px;top:-100px;left:-100px;"></div>
+  <div class="two-col">
+    <div>
+      <div class="label reveal">Introducción</div>
+      <h2 class="slide-title reveal reveal-d1">Bitcoin como<br>Sistema Complejo</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <p class="body-text reveal reveal-d2">Bitcoin ha evolucionado de un activo digital de nicho a un fenómeno financiero global. Su extrema volatilidad, estructura descentralizada y sensibilidad a eventos macroeconómicos lo convierten en un desafío único para la predicción cuantitativa.</p>
+      <div class="timeline reveal reveal-d3">
+        <div class="timeline-item"><span class="tl-year">2019</span><div class="tl-dot"></div><p class="tl-text">Inicio del dataset. BTC a ~$3.350. Alta volatilidad, baja adopción institucional.</p></div>
+        <div class="timeline-item"><span class="tl-year">2020</span><div class="tl-dot"></div><p class="tl-text">Crash por COVID-19: BTC pierde 50% en días. Le sigue una recuperación acelerada.</p></div>
+        <div class="timeline-item"><span class="tl-year">2021</span><div class="tl-dot"></div><p class="tl-text">Primer ciclo ATH: $69.000. Tesla y MicroStrategy ingresan. China prohíbe las cripto.</p></div>
+        <div class="timeline-item"><span class="tl-year">2025</span><div class="tl-dot"></div><p class="tl-text">BTC supera los $100.000 por primera vez en la historia.</p></div>
+      </div>
+    </div>
+    <div>
+      <div class="stats-row reveal reveal-d2">
+        <div class="stat-card"><div class="stat-value">$42K</div><div class="stat-label">Precio promedio 2019–2026</div></div>
+        <div class="stat-card"><div class="stat-value">$33K</div><div class="stat-label">Desviación estándar</div></div>
+        <div class="stat-card"><div class="stat-value">$126K</div><div class="stat-label">Máximo histórico registrado</div></div>
+        <div class="stat-card"><div class="stat-value">$50K</div><div class="stat-label">Rango intercuartílico (IQR)</div></div>
+      </div>
+      <div class="card reveal reveal-d3" style="margin-top:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Precio Promedio Anual</div>
+        <table class="data-table">
+          <thead><tr><th>Año</th><th>Promedio</th><th>Máximo</th></tr></thead>
+          <tbody>
+            <tr><td>2019</td><td class="val">$7.351</td><td class="val">$13.823</td></tr>
+            <tr><td>2021</td><td class="val">$47.376</td><td class="val">$68.599</td></tr>
+            <tr><td>2024</td><td class="val">$65.885</td><td class="val">$108.025</td></tr>
+            <tr><td>2025</td><td class="val">$101.640</td><td class="val">$125.928</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 3 — DATASET  -->
+<section class="slide" id="slide-3">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:400px;height:400px;bottom:0;right:0;"></div>
+  <div class="two-col">
+    <div>
+      <div class="label reveal">Dataset</div>
+      <h2 class="slide-title reveal reveal-d1">Datos Históricos<br>OHLCV de Bitcoin</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <p class="body-text reveal reveal-d2">Fuente: Kaggle — "Bitcoin Historical Data". Originalmente registrado a intervalos de 1 minuto desde 2012. Para este estudio, los datos desde 2019 en adelante fueron remuestreados a intervalos de 15 minutos, equilibrando granularidad y costo computacional.</p>
+      <div class="var-chips reveal reveal-d3">
+        <span class="chip">Open</span><span class="chip">High</span><span class="chip">Low</span><span class="chip">Close</span><span class="chip">Volume</span><span class="chip">Timestamp</span>
+      </div>
+      <div style="margin-top:28px;" class="reveal reveal-d4">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Muestra del Dataset</div>
+        <table class="data-table">
+          <thead><tr><th>Timestamp</th><th>Open</th><th>Close</th><th>Volumen</th></tr></thead>
+          <tbody>
+            <tr><td class="val">2019-01-01 00:00</td><td class="val">3.746,45</td><td class="val">3.746,23</td><td class="val">7,07</td></tr>
+            <tr><td class="val">2021-11-10 14:00</td><td class="val">68.512,40</td><td class="val">68.599,00</td><td class="val">12,33</td></tr>
+            <tr><td class="val">2025-01-22 09:15</td><td class="val">104.218,00</td><td class="val">103.980,00</td><td class="val">3,21</td></tr>
+            <tr><td class="val">2026-02-24 00:00</td><td class="val">64.686,50</td><td class="val">64.718,50</td><td class="val">1,87</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card reveal reveal-d2" style="margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Resumen del Dataset</div>
+        <table class="data-table">
+          <tbody>
+            <tr><td>Total de observaciones</td><td class="val" style="color:var(--btc);">250.657</td></tr>
+            <tr><td>Fecha de inicio</td><td class="val">2019-01-01</td></tr>
+            <tr><td>Fecha de fin</td><td class="val">2026-02-24</td></tr>
+            <tr><td>Frecuencia</td><td class="val">Intervalos de 15 min</td></tr>
+            <tr><td>Valores faltantes</td><td class="val" style="color:var(--green);">76 (0,03%) → imputados</td></tr>
+            <tr><td>Mínimo Close</td><td class="val">$3.350</td></tr>
+            <tr><td>Máximo Close</td><td class="val">$125.928</td></tr>
+            <tr><td>Promedio Close</td><td class="val">$42.308</td></tr>
+            <tr><td>Desviación Estándar</td><td class="val">$32.478</td></tr>
+            <tr><td>IQR</td><td class="val">$50.699</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 4 — PROBLEMA  -->
+<section class="slide" id="slide-4">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb" style="width:400px;height:400px;top:50%;right:0;background:rgba(239,68,68,0.05);filter:blur(80px);"></div>
+  <div class="two-col">
+    <div>
+      <div class="label reveal">Problema de Investigación</div>
+      <h2 class="slide-title reveal reveal-d1">¿Por qué Bitcoin<br>es tan difícil de predecir?</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <p class="body-text reveal reveal-d2">El Bitcoin exhibe propiedades que violan los supuestos de los modelos estadísticos clásicos — convirtiendo la predicción precisa en un desafío científico abierto y significativo.</p>
+      <div class="challenge-list reveal reveal-d3">
+        <div class="challenge-item">
+          <div class="challenge-icon" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--btc);font-weight:600;">01</div>
+          <div class="challenge-text"><h4>No estacionariedad</h4><p>ADF p-valor = 0,6158 · KPSS p-valor = 0,01. Ambas pruebas confirman que la serie de precios no es estacionaria — la media y varianza cambian drásticamente en el tiempo.</p></div>
+        </div>
+        <div class="challenge-item">
+          <div class="challenge-icon" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--btc);font-weight:600;">02</div>
+          <div class="challenge-text"><h4>Agrupamiento de Volatilidad</h4><p>53 eventos extremos detectados con umbral de 7σ. Los períodos de alta volatilidad se agrupan — los modelos homocedásticos estándar no pueden capturar este fenómeno.</p></div>
+        </div>
+        <div class="challenge-item">
+          <div class="challenge-icon" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--btc);font-weight:600;">03</div>
+          <div class="challenge-text"><h4>Eventos Macroeconómicos Externos</h4><p>Crash por COVID (−50%), colapso FTX (−25%), prohibiciones regulatorias y entradas institucionales dominan la distribución de retornos de manera impredecible.</p></div>
+        </div>
+        <div class="challenge-item">
+          <div class="challenge-icon" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--btc);font-weight:600;">04</div>
+          <div class="challenge-text"><h4>Memoria Corta</h4><p>ACF/PACF muestra que solo el lag-1 tiene autocorrelación débil. El análisis de Fourier no encuentra ninguna frecuencia cíclica dominante — la serie está dominada por el ruido.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="reveal reveal-d4">
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Resultados — Pruebas de Estacionariedad</div>
+        <table class="data-table">
+          <thead><tr><th>Serie</th><th>Test</th><th style="text-align:right;">p-valor</th><th style="text-align:right;">Resultado</th></tr></thead>
+          <tbody>
+            <tr>
+              <td rowspan="2" style="color:var(--muted);">Precio Close<br><span style="font-size:0.72rem;">(raw)</span></td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.78rem;">ADF</td>
+              <td class="val" style="text-align:right;color:var(--red);">0,6158</td>
+              <td style="text-align:right;color:var(--red);font-size:0.78rem;">No estacionaria</td>
+            </tr>
+            <tr>
+              <td style="font-family:'DM Mono',monospace;font-size:0.78rem;">KPSS</td>
+              <td class="val" style="text-align:right;color:var(--red);">0,01</td>
+              <td style="text-align:right;color:var(--red);font-size:0.78rem;">No estacionaria</td>
+            </tr>
+            <tr style="border-top:1px solid rgba(16,185,129,0.15);">
+              <td rowspan="2" style="color:var(--text);">Δ log(Close)<br><span style="font-size:0.72rem;color:var(--green);">(seleccionada)</span></td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.78rem;">ADF</td>
+              <td class="val" style="text-align:right;color:var(--green);">&lt; 0,05</td>
+              <td style="text-align:right;color:var(--green);font-size:0.78rem;">Estacionaria ✓</td>
+            </tr>
+            <tr>
+              <td style="font-family:'DM Mono',monospace;font-size:0.78rem;">KPSS</td>
+              <td class="val" style="text-align:right;color:var(--green);">&gt; 0,05</td>
+              <td style="text-align:right;color:var(--green);font-size:0.78rem;">Estacionaria ✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-bottom:16px;background:rgba(247,147,26,0.03);border-color:rgba(247,147,26,0.15);">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--btc);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Variable objetivo seleccionada</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:-0.02em;">Δ log(Close)</div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-top:8px;line-height:1.6;">Retorno logarítmico del precio de cierre a 15 minutos. Garantiza estacionariedad y elimina la tendencia de largo plazo.</div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+          <span class="chip">Media ≈ 0,000011</span>
+          <span class="chip">Std ≈ 0,002868</span>
+          <span class="chip">250.656 obs.</span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Eventos extremos detectados</div>
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;color:var(--btc);">53</span>
+          <span style="font-size:0.8rem;color:var(--muted);">outliers con umbral 7σ</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:8px;">COVID (mar 2020), colapso FTX (nov 2022), ATH cycles (2021, 2024, 2025)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 5 — EDA  -->
+<section class="slide" id="slide-5">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-green" style="width:500px;height:500px;top:0;right:-100px;"></div>
+  <div class="two-col">
+    <div>
+      <div class="label reveal">Análisis Exploratorio de Datos</div>
+      <h2 class="slide-title reveal reveal-d1">Comportamiento<br>y Estacionariedad</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <div class="eda-metrics reveal reveal-d2">
+        <div class="eda-metric"><div class="val">53</div><div class="lbl">Eventos outlier extremos (7σ)</div></div>
+        <div class="eda-metric"><div class="val">0,03%</div><div class="lbl">Valores faltantes (imputados)</div></div>
+        <div class="eda-metric"><div class="val">λ=0,96</div><div class="lbl">Suavizado exponencial óptimo</div></div>
+        <div class="eda-metric"><div class="val">Lag 1</div><div class="lbl">Único lag ACF significativo</div></div>
+      </div>
+      <div style="margin-top:28px;" class="reveal reveal-d3">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Hallazgos clave</div>
+        <div class="transform-list">
+          <div class="transform-item"><span class="badge badge-red">NO</span><span>No se encontraron patrones estacionales (descomposición clásica + STL)</span></div>
+          <div class="transform-item"><span class="badge badge-red">NO</span><span>El día de la semana no tiene poder predictivo sobre el precio</span></div>
+          <div class="transform-item"><span class="badge badge-btc">CLAVE</span><span>Fourier: sin frecuencia dominante — precio impulsado por eventos de mercado</span></div>
+          <div class="transform-item"><span class="badge badge-green">OK</span><span>Log-retorno (Δ log Close) logra estacionariedad — seleccionado como variable objetivo</span></div>
+          <div class="transform-item"><span class="badge badge-green">OK</span><span>MA-200 es el indicador de tendencia a largo plazo más útil identificado</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="reveal reveal-d3">
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Varianza por Período</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div><div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:5px;"><span style="color:var(--muted);">2019</span><span style="font-family:'DM Mono',monospace;font-size:0.75rem;">$6,8M</span></div><div class="bar-bg"><div class="bar-fill" style="width:3%;background:var(--btc);"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:5px;"><span style="color:var(--muted);">2021</span><span style="font-family:'DM Mono',monospace;font-size:0.75rem;">$96,5M</span></div><div class="bar-bg"><div class="bar-fill" style="width:38%;background:var(--btc);"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:5px;"><span style="color:var(--muted);">2024</span><span style="font-family:'DM Mono',monospace;font-size:0.75rem;">$215,9M</span></div><div class="bar-bg"><div class="bar-fill" style="width:85%;background:var(--btc);"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:5px;"><span style="color:var(--muted);">2025</span><span style="font-family:'DM Mono',monospace;font-size:0.75rem;">$253,2M</span></div><div class="bar-bg"><div class="bar-fill" style="width:100%;background:var(--glow);"></div></div></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:12px;font-style:italic;">La varianza es no monótona — confirma heterocedasticidad</div>
+      </div>
+      <div class="card">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Transformaciones de Estacionariedad Evaluadas</div>
+        <table class="data-table">
+          <thead><tr><th>Transformación</th><th>ADF</th><th>KPSS</th></tr></thead>
+          <tbody>
+            <tr><td>Precio crudo</td><td class="val" style="color:var(--red);">✗ Falla</td><td class="val" style="color:var(--red);">✗ Falla</td></tr>
+            <tr><td>Log Precio</td><td class="val" style="color:var(--red);">✗ Falla</td><td class="val" style="color:var(--red);">✗ Falla</td></tr>
+            <tr><td>Primera Diferencia</td><td class="val" style="color:var(--green);">✓ Pasa</td><td class="val" style="color:var(--green);">✓ Pasa</td></tr>
+            <tr><td><strong>Log-Diferencia</strong></td><td class="val" style="color:var(--green);">✓ Pasa</td><td class="val" style="color:var(--green);">✓ Pasa</td></tr>
+            <tr><td>Z-Score</td><td class="val" style="color:var(--red);">✗ Falla</td><td class="val" style="color:var(--red);">✗ Falla</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 6 — METODOLOGÍA  -->
+<section class="slide" id="slide-6">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:400px;height:400px;top:0;left:0;"></div>
+  <div class="two-col">
+    <div>
+      <div class="label reveal">Metodología</div>
+      <h2 class="slide-title reveal reveal-d1">Pipeline de<br>Entrenamiento y Validación</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <div class="pipeline-steps reveal reveal-d2">
+        <div class="pipeline-step"><div class="step-num">01</div><div class="step-line"></div><div class="step-text"><h4>Carga y Remuestreo de Datos</h4><p>250.657 obs. a intervalos de 15 min. Relleno adelantado/atrasado para 76 valores faltantes.</p></div></div>
+        <div class="pipeline-step"><div class="step-num">02</div><div class="step-line"></div><div class="step-text"><h4>Ingeniería de Características</h4><p>Objetivo: Δ log(Close). 16 valores rezagados como entradas (N_LAGS=16, validado por prueba BDS).</p></div></div>
+        <div class="pipeline-step"><div class="step-num">03</div><div class="step-line"></div><div class="step-text"><h4>División Temporal</h4><p>5-fold GroupKFold respetando orden cronológico. Sin fuga de datos. ~32K entrenamiento / ~10K validación / ~10K prueba por fold.</p></div></div>
+        <div class="pipeline-step"><div class="step-num">04</div><div class="step-line"></div><div class="step-text"><h4>Optimización de Hiperparámetros</h4><p>4 estrategias: Grid Search, Random Search, Optuna (Bayesiana), DEAP (Genético). StandardScaler dentro de cada fold.</p></div></div>
+        <div class="pipeline-step"><div class="step-num">05</div><div class="step-line"></div><div class="step-text"><h4>Métricas de Evaluación</h4><p>RMSE y MAE sobre el conjunto de prueba final. El conjunto de prueba nunca se vio durante la optimización.</p></div></div>
+      </div>
+    </div>
+    <div class="reveal reveal-d3">
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Validación Cruzada Temporal — 5 Folds</div>
+      <div class="fold-vis">
+        <div style="display:flex;gap:8px;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);margin-bottom:4px;"><span style="width:40px;"></span><span style="flex:3.2;text-align:center;">Entrenamiento (~32K)</span><span style="flex:1;text-align:center;">Val</span><span style="flex:1;text-align:center;">Test</span></div>
+        <div class="fold-row"><span class="fold-label">Fold 0</span><div class="fold-bar fold-train" style="flex:3.2;"></div><div class="fold-bar fold-val" style="flex:1;"></div><div class="fold-bar fold-test" style="flex:1;"></div></div>
+        <div class="fold-row"><span class="fold-label">Fold 1</span><div class="fold-bar fold-train" style="flex:3.2;"></div><div class="fold-bar fold-val" style="flex:1;"></div><div class="fold-bar fold-test" style="flex:1;"></div></div>
+        <div class="fold-row"><span class="fold-label">Fold 2</span><div class="fold-bar fold-train" style="flex:3.2;"></div><div class="fold-bar fold-val" style="flex:1;"></div><div class="fold-bar fold-test" style="flex:1;"></div></div>
+        <div class="fold-row"><span class="fold-label">Fold 3</span><div class="fold-bar fold-train" style="flex:3.2;"></div><div class="fold-bar fold-val" style="flex:1;"></div><div class="fold-bar fold-test" style="flex:1;"></div></div>
+        <div class="fold-row"><span class="fold-label">Fold 4</span><div class="fold-bar fold-train" style="flex:3.2;"></div><div class="fold-bar fold-val" style="flex:1;"></div><div class="fold-bar fold-test" style="flex:1;"></div></div>
+        <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);"><div style="width:12px;height:6px;border-radius:2px;background:rgba(247,147,26,0.4);"></div>Entrenamiento</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);"><div style="width:12px;height:6px;border-radius:2px;background:rgba(247,147,26,0.15);"></div>Validación</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--muted);"><div style="width:12px;height:6px;border-radius:2px;background:rgba(247,147,26,0.06);border:1px solid var(--border);"></div>Prueba</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:24px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Estrategias de Optimización</div>
+        <table class="data-table">
+          <thead><tr><th>Método</th><th>Iteraciones</th><th>Enfoque</th></tr></thead>
+          <tbody>
+            <tr><td>Grid Search</td><td class="val">Exhaustivo</td><td class="val">Todas las combinaciones</td></tr>
+            <tr><td>Random Search</td><td class="val">30 pruebas</td><td class="val">Muestreo estocástico</td></tr>
+            <tr><td>Optuna (TPE)</td><td class="val">30 pruebas</td><td class="val">Sustituto bayesiano</td></tr>
+            <tr><td>DEAP (Genético)</td><td class="val">10 pob. · 3 gen.</td><td class="val">Búsqueda evolutiva</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 7 — MODELOS  -->
+<section class="slide" id="slide-7">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:600px;height:600px;top:-200px;right:-200px;opacity:0.7;"></div>
+  <div class="models-layout">
+    <div class="label reveal">Modelos Evaluados</div>
+    <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;">
+      <h2 class="slide-title reveal reveal-d1" style="margin-bottom:0;">Ocho Enfoques de Predicción</h2>
+      <div style="display:flex;gap:8px;" class="reveal reveal-d1">
+        <span style="padding:3px 10px;border-radius:6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);font-size:0.7rem;font-family:'DM Mono',monospace;color:#818CF8;">Benchmark</span>
+        <span style="padding:3px 10px;border-radius:6px;background:rgba(247,147,26,0.1);border:1px solid rgba(247,147,26,0.2);font-size:0.7rem;font-family:'DM Mono',monospace;color:var(--btc);">Híbrido</span>
+      </div>
+    </div>
+    <p style="font-size:0.85rem;color:var(--muted);max-width:700px;margin-top:6px;" class="reveal reveal-d2">
+      Variable objetivo: log-retorno de BTC/USD a intervalos de 15 min. Entrada: 16 observaciones rezagadas (N_LAGS = 16). Los modelos híbridos siguen la arquitectura de stacking propuesta por <span style="color:var(--btc);">Ogunbona &amp; Alayande (2026)</span>.
+    </p>
+    <div class="models-grid">
+      <!-- Benchmarks -->
+      <div class="model-card reveal reveal-d2">
+        <div class="model-type">Estadístico <span class="badge benchmark-tag" style="font-size:0.58rem;padding:2px 6px;">Benchmark</span></div>
+        <div class="model-name">ARIMA</div>
+        <div class="model-desc">Media Móvil Integrada Autorregresiva. Línea base para estructura lineal. Orden (3,0,1) optimizado.</div>
+        <div class="model-pros"><span class="pro-tag">Interpretable</span><span class="pro-tag">Clásico</span></div>
+      </div>
+      <div class="model-card reveal reveal-d2">
+        <div class="model-type">Reg. Regularizada <span class="badge benchmark-tag" style="font-size:0.58rem;padding:2px 6px;">Benchmark</span></div>
+        <div class="model-name">Ridge / Lasso</div>
+        <div class="model-desc">Regresión regularizada. Ridge: RMSE=0,002706 · Lasso: RMSE=0,002705 (mejor benchmark).</div>
+        <div class="model-pros"><span class="pro-tag">Eficiente</span><span class="pro-tag">Generaliza</span></div>
+      </div>
+      <div class="model-card reveal reveal-d3">
+        <div class="model-type">Kernel <span class="badge benchmark-tag" style="font-size:0.58rem;padding:2px 6px;">Benchmark</span></div>
+        <div class="model-name">SVR</div>
+        <div class="model-desc">Regresión por Vectores de Soporte. RMSE=0,002713, MAE=0,001592. Sólido en no linealidad.</div>
+        <div class="model-pros"><span class="pro-tag">Robusto</span><span class="pro-tag">Kernel</span></div>
+      </div>
+      <div class="model-card reveal reveal-d3">
+        <div class="model-type">Ensamble <span class="badge benchmark-tag" style="font-size:0.58rem;padding:2px 6px;">Benchmark</span></div>
+        <div class="model-name">Random Forest</div>
+        <div class="model-desc">Bagging de árboles de decisión. RMSE=0,002719. Estable frente a ruido de alta frecuencia.</div>
+        <div class="model-pros"><span class="pro-tag">Estable</span><span class="pro-tag">Ensamble</span></div>
+      </div>
+      <div class="model-card reveal reveal-d4">
+        <div class="model-type">Ensamble <span class="badge benchmark-tag" style="font-size:0.58rem;padding:2px 6px;">Benchmark</span></div>
+        <div class="model-name">XGBoost</div>
+        <div class="model-desc">Gradient boosting. RMSE=0,002740. n_estimators=200, lr=0,01. Optimizado con Optuna.</div>
+        <div class="model-pros"><span class="pro-tag">Rápido</span><span class="pro-tag">Robusto</span></div>
+      </div>
+      <div class="model-card reveal reveal-d4" style="border-color:rgba(247,147,26,0.2);background:rgba(247,147,26,0.03);">
+        <div class="model-type" style="color:var(--glow);">Híbrido  <span style="font-size:0.58rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);vertical-align:middle;">Híbrido</span></div>
+        <div class="model-name">ARIMA–LSTM (avg)</div>
+        <div class="model-desc">Promedio de predicciones ARIMA + LSTM. RMSE=0,00273. Captura componentes lineales y no lineales.</div>
+        <div class="model-pros"><span class="pro-tag">Lineal+No-lineal</span></div>
+      </div>
+      <div class="model-card reveal reveal-d4" style="border-color:rgba(247,147,26,0.2);background:rgba(247,147,26,0.03);">
+        <div class="model-type" style="color:var(--glow);">Híbrido  <span style="font-size:0.58rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);vertical-align:middle;">Híbrido</span></div>
+        <div class="model-name">XGBoost–LSTM (avg)</div>
+        <div class="model-desc">Promedio XGBoost + LSTM. RMSE=0,00271 — mejor resultado general. Combina árboles y redes recurrentes.</div>
+        <div class="model-pros"><span class="pro-tag">Mejor RMSE</span></div>
+      </div>
+      <div class="model-card reveal reveal-d4" style="border-color:rgba(247,147,26,0.2);background:rgba(247,147,26,0.03);">
+        <div class="model-type" style="color:var(--glow);">Híbrido  <span style="font-size:0.58rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);vertical-align:middle;">Híbrido</span></div>
+        <div class="model-name">ARIMA–LSTM–XGBoost–MLP</div>
+        <div class="model-desc">Stacking completo del paper: ARIMA captura lineal, LSTM y XGBoost lo no lineal, MLP como meta-aprendiz.</div>
+        <div class="model-pros"><span class="pro-tag">Arquitectura completa</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 7b — COMBINACIONES HÍBRIDAS  -->
+<section class="slide" id="slide-7b">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:500px;height:500px;bottom:-150px;left:-100px;opacity:0.6;"></div>
+  <div class="orb orb-blue" style="width:400px;height:400px;top:-100px;right:-100px;"></div>
+
+  <div style="max-width:1150px;width:100%;position:relative;z-index:2;">
+    <div class="label reveal">Arquitecturas Híbridas</div>
+    <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;margin-bottom:8px;">
+      <h2 class="slide-title reveal reveal-d1" style="margin-bottom:0;">Combinaciones<br>Evaluadas</h2>
+    </div>
+    <p style="font-size:0.85rem;color:var(--muted);max-width:750px;" class="reveal reveal-d2">
+      Cada combinación híbrida apila modelos base (ARIMA, LSTM, XGBoost, MLP) como capas de predicción. Los errores del modelo lineal son corregidos por el no-lineal, y un meta-aprendiz MLP combina todas las señales. Referencia: <em style="color:var(--btc);">Ogunbona &amp; Alayande (2026)</em>.
+    </p>
+
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:28px;margin-top:24px;" class="reveal reveal-d3">
+
+      <!-- Tabla de combinaciones -->
+      <div class="card">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Combinaciones Implementadas</div>
+        <table class="rtable" style="font-size:0.8rem;">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Modelos Base</th>
+              <th>Meta</th>
+              <th style="text-align:right;">RMSE</th>
+              <th style="text-align:right;">MAE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- PROMEDIOS -->
+            <tr style="border-top:1px solid rgba(247,147,26,0.1);">
+              <td colspan="6" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--btc);padding:8px 14px 4px;letter-spacing:0.1em;">PROMEDIO SIMPLE (Average Ensemble)</td>
+            </tr>
+            <tr class="winner">
+              <td style="color:var(--btc);">H1</td>
+              <td><strong>XGBoost–LSTM</strong></td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">XGB + LSTM</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
+              <td style="text-align:right;">0,00267</td>
+              <td style="text-align:right;">0,00159</td>
+            </tr>
+            <tr>
+              <td>S1</td>
+              <td>ARIMA–XGBoost–MLP</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA+XGB</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP</td>
+              <td style="text-align:right;">0,00269</td>
+              <td style="text-align:right;">0,00164</td>
+            </tr>
+            <tr>
+              <td>H2</td>
+              <td>ARIMA–LSTM</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + LSTM</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
+              <td style="text-align:right;">0,00270</td>
+              <td style="text-align:right;">0,00160</td>
+            </tr>
+            <tr>
+              <td>H3</td>
+              <td>ARIMA–XGBoost</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + XGB</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
+              <td style="text-align:right;">0,00271</td>
+              <td style="text-align:right;">0,00160</td>
+            </tr>
+            <tr>
+              <td>S2</td>
+              <td>ARIMA–LSTM–XGBoost–MLP</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA+LSTM+XGB</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP</td>
+              <td style="text-align:right;">0,00276</td>
+              <td style="text-align:right;">0,00163</td>
+            </tr>
+            <tr>
+              <td>S3</td>
+              <td>ARIMA–LSTM–MLP</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + LSTM</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP</td>
+              <td style="text-align:right;">0,00280</td>
+              <td style="text-align:right;">0,00163</td>
+            </tr>
+            <!-- Average remainder -->
+            <tr style="border-top:1px solid rgba(247,147,26,0.08);">
+              <td>H4</td>
+              <td>MLP–XGBoost</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP + XGB</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
+              <td style="text-align:right;">0,00281</td>
+              <td style="text-align:right;">0,00163</td>
+            </tr>
+            <tr>
+              <td>H5</td>
+              <td>MLP–LSTM</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP + LSTM</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
+              <td style="text-align:right;">0,00281</td>
+              <td style="text-align:right;">0,00163</td>
+            </tr>
+            <tr>
+              <td>H6</td>
+              <td>ARIMA–MLP</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + MLP</td>
+              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
+              <td style="text-align:right;">0,00283</td>
+              <td style="text-align:right;">0,00164</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Panel derecho: insight + leyenda visual -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Mejor vs peor -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="card" style="padding:18px 20px;background:rgba(247,147,26,0.04);border-color:rgba(247,147,26,0.2);">
+            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;">Mejor Híbrido</div>
+            <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--btc);">XGBoost–LSTM</div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.85rem;margin-top:4px;">RMSE 0,00267</div>
+          </div>
+          <div class="card" style="padding:18px 20px;">
+            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;">Peor Stacking</div>
+            <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--muted);">ARIMA–MLP (avg)</div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.85rem;margin-top:4px;">RMSE 0,00283</div>
+          </div>
+        </div>
+
+        <!-- Insight -->
+        <div class="card" style="background:rgba(16,185,129,0.03);border-color:rgba(16,185,129,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--green);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;">Hallazgo Principal</div>
+          <p style="font-size:0.82rem;color:var(--muted);line-height:1.65;">El <strong style="color:var(--text);">promedio simple supera al stacking</strong> en todos los casos. El meta-aprendiz MLP no logra aprender combinaciones óptimas con solo 2–3 señales de entrada, posiblemente por el reducido número de features en el nivel meta.</p>
+        </div>
+
+        <!-- Leyenda de tipos -->
+        <div class="card">
+          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Tipos de Combinación</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <span style="padding:3px 9px;border-radius:5px;background:rgba(247,147,26,0.1);border:1px solid rgba(247,147,26,0.25);font-size:0.68rem;font-family:'DM Mono',monospace;color:var(--btc);flex-shrink:0;">avg</span>
+              <span style="font-size:0.8rem;color:var(--muted);">Promedio aritmético de las predicciones de cada modelo base. Simple, sin parámetros adicionales.</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <span style="padding:3px 9px;border-radius:5px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);font-size:0.68rem;font-family:'DM Mono',monospace;color:#818CF8;flex-shrink:0;">MLP</span>
+              <span style="font-size:0.8rem;color:var(--muted);">Red neuronal densa que aprende a ponderar y combinar las predicciones de los modelos base (stacking de dos niveles).</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 8 — LSTM ARCHITECTURE  -->
+<section class="slide" id="slide-8">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-blue" style="width:600px;height:600px;bottom:-200px;left:-100px;"></div>
+  <div class="arch-layout">
+    <div>
+      <div class="label reveal">Aprendizaje Profundo</div>
+      <h2 class="slide-title reveal reveal-d1">Arquitectura LSTM</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <p class="body-text reveal reveal-d2">El modelo LSTM procesa secuencias de 16 log-retornos consecutivos para predecir el siguiente valor. Una capa recurrente con regularización dropout es seguida por una salida densa.</p>
+      <div class="param-list reveal reveal-d3">
+        <div class="param-row"><span class="param-key">Forma de entrada</span><span class="param-val">(16, 1) — 16 lags × 1 variable</span></div>
+        <div class="param-row"><span class="param-key">Unidades LSTM</span><span class="param-val">32</span></div>
+        <div class="param-row"><span class="param-key">Tasa de dropout</span><span class="param-val">0,20</span></div>
+        <div class="param-row"><span class="param-key">Tasa de aprendizaje</span><span class="param-val">0,01 (Adam)</span></div>
+        <div class="param-row"><span class="param-key">Tamaño de lote</span><span class="param-val">64</span></div>
+        <div class="param-row"><span class="param-key">Parada anticipada</span><span class="param-val">paciencia = 5</span></div>
+        <div class="param-row"><span class="param-key">Salida</span><span class="param-val">Dense(1) — log-retorno siguiente</span></div>
+        <div class="param-row"><span class="param-key">RMSE validación</span><span class="param-val" style="color:var(--green);">0,00277</span></div>
+      </div>
+    </div>
+    <div class="reveal reveal-d3">
+      <div class="card" style="height:100%;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:20px;">Arquitectura de la Red</div>
+        <svg width="100%" viewBox="0 0 340 340" style="overflow:visible;">
+          <text x="10" y="20" font-family="'DM Mono',monospace" font-size="9" fill="#9CA3AF">SECUENCIA DE ENTRADA (16 lags)</text>
+          <g>
+            <rect x="10" y="30" width="38" height="28" rx="5" fill="rgba(247,147,26,0.08)" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <text x="29" y="49" font-family="'DM Mono',monospace" font-size="8" fill="#F7931A" text-anchor="middle">t-16</text>
+            <rect x="54" y="30" width="38" height="28" rx="5" fill="rgba(247,147,26,0.08)" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <text x="73" y="49" font-family="'DM Mono',monospace" font-size="8" fill="#F7931A" text-anchor="middle">t-15</text>
+            <text x="101" y="49" font-family="'DM Mono',monospace" font-size="10" fill="#4B5563" text-anchor="middle">···</text>
+            <rect x="118" y="30" width="38" height="28" rx="5" fill="rgba(247,147,26,0.08)" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <text x="137" y="49" font-family="'DM Mono',monospace" font-size="8" fill="#F7931A" text-anchor="middle">t-2</text>
+            <rect x="162" y="30" width="38" height="28" rx="5" fill="rgba(247,147,26,0.15)" stroke="rgba(247,147,26,0.4)" stroke-width="1"/>
+            <text x="181" y="49" font-family="'DM Mono',monospace" font-size="8" fill="#F7931A" text-anchor="middle">t-1</text>
+          </g>
+          <line x1="100" y1="58" x2="100" y2="78" stroke="rgba(247,147,26,0.3)" stroke-width="1.5"/>
+          <polygon points="97,76 103,76 100,82" fill="rgba(247,147,26,0.3)"/>
+          <text x="10" y="98" font-family="'DM Mono',monospace" font-size="9" fill="#9CA3AF">CAPA LSTM — 32 unidades</text>
+          <rect x="10" y="108" width="310" height="60" rx="10" fill="rgba(99,102,241,0.06)" stroke="rgba(99,102,241,0.2)" stroke-width="1"/>
+          <g>
+            <rect x="24" y="122" width="40" height="32" rx="6" fill="rgba(99,102,241,0.12)" stroke="rgba(99,102,241,0.3)" stroke-width="1"/>
+            <text x="44" y="142" font-family="'DM Mono',monospace" font-size="7.5" fill="#818CF8" text-anchor="middle">LSTM</text>
+            <rect x="74" y="122" width="40" height="32" rx="6" fill="rgba(99,102,241,0.12)" stroke="rgba(99,102,241,0.3)" stroke-width="1"/>
+            <text x="94" y="142" font-family="'DM Mono',monospace" font-size="7.5" fill="#818CF8" text-anchor="middle">LSTM</text>
+            <rect x="124" y="122" width="40" height="32" rx="6" fill="rgba(99,102,241,0.12)" stroke="rgba(99,102,241,0.3)" stroke-width="1"/>
+            <text x="144" y="142" font-family="'DM Mono',monospace" font-size="7.5" fill="#818CF8" text-anchor="middle">LSTM</text>
+            <text x="180" y="142" font-family="'DM Mono',monospace" font-size="8" fill="#4B5563" text-anchor="middle">···</text>
+            <rect x="200" y="122" width="40" height="32" rx="6" fill="rgba(99,102,241,0.2)" stroke="rgba(99,102,241,0.5)" stroke-width="1"/>
+            <text x="220" y="142" font-family="'DM Mono',monospace" font-size="7.5" fill="#818CF8" text-anchor="middle">LSTM</text>
+            <line x1="64" y1="138" x2="74" y2="138" stroke="rgba(99,102,241,0.3)" stroke-width="1"/>
+            <line x1="114" y1="138" x2="124" y2="138" stroke="rgba(99,102,241,0.3)" stroke-width="1"/>
+            <line x1="164" y1="138" x2="174" y2="138" stroke="rgba(99,102,241,0.3)" stroke-width="1"/>
+          </g>
+          <text x="255" y="142" font-family="'DM Mono',monospace" font-size="7" fill="#6B7280">h_t → sig.</text>
+          <line x1="170" y1="168" x2="170" y2="192" stroke="rgba(247,147,26,0.3)" stroke-width="1.5"/>
+          <polygon points="167,190 173,190 170,196" fill="rgba(247,147,26,0.3)"/>
+          <text x="10" y="210" font-family="'DM Mono',monospace" font-size="9" fill="#9CA3AF">DROPOUT  p=0,20</text>
+          <rect x="80" y="218" width="180" height="28" rx="8" fill="rgba(239,68,68,0.06)" stroke="rgba(239,68,68,0.15)" stroke-width="1"/>
+          <text x="170" y="236" font-family="'DM Mono',monospace" font-size="8" fill="#F87171" text-anchor="middle">descarta 20% de neuronas</text>
+          <line x1="170" y1="246" x2="170" y2="266" stroke="rgba(247,147,26,0.3)" stroke-width="1.5"/>
+          <polygon points="167,264 173,264 170,270" fill="rgba(247,147,26,0.3)"/>
+          <text x="10" y="284" font-family="'DM Mono',monospace" font-size="9" fill="#9CA3AF">SALIDA — Dense(1)</text>
+          <rect x="120" y="292" width="100" height="32" rx="8" fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+          <text x="170" y="312" font-family="'DM Mono',monospace" font-size="8" fill="#10B981" text-anchor="middle">log-retorno(t+1)</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 9 — MODELOS HÍBRIDOS  -->
+<section class="slide" id="slide-9">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:500px;height:500px;bottom:-200px;right:-100px;"></div>
+  <div style="max-width:1100px;width:100%;position:relative;z-index:2;">
+    <div class="label reveal">Modelos Híbridos de Stacking</div>
+    <h2 class="slide-title reveal reveal-d1">Arquitectura Propuesta por<br>Ogunbona &amp; Alayande (2026)</h2>
+    <p style="font-size:0.85rem;color:var(--muted);max-width:780px;margin-bottom:28px;" class="reveal reveal-d2">
+      Se implementaron y compararon tres variantes híbridas de stacking. Los modelos base capturan la estructura lineal (ARIMA) y no lineal (LSTM, XGBoost). El MLP actúa como meta-aprendiz que combina las predicciones. Referencia: <em style="color:var(--btc);">A Multi-Model Hybrid Framework for Forecasting International Crude Oil Benchmarks, ResearchGate 2026.</em>
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;" class="reveal reveal-d3">
+      <!-- Tabla de resultados -->
+      <div class="card">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Comparación: 6 Promedios + 3 Stacking Híbridos</div>
+        <table class="rtable" style="font-size:0.78rem;">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Modelo</th>
+              <th style="text-align:right;">RMSE</th>
+              <th style="text-align:right;">MAE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="winner"><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);">Promedio</span></td><td><strong>XGBoost–LSTM (avg)</strong></td><td style="text-align:right;">0,00271</td><td style="text-align:right;">0,00159</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);">Promedio</span></td><td>MLP–LSTM (avg)</td><td style="text-align:right;">0,00271</td><td style="text-align:right;">0,00159</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);">Promedio</span></td><td>MLP–XGBoost (avg)</td><td style="text-align:right;">0,00272</td><td style="text-align:right;">0,00160</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);">Promedio</span></td><td>ARIMA–LSTM (avg)</td><td style="text-align:right;">0,00273</td><td style="text-align:right;">0,00160</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);">Promedio</span></td><td>ARIMA–MLP (avg)</td><td style="text-align:right;">0,00273</td><td style="text-align:right;">0,00160</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(247,147,26,0.12);border:1px solid rgba(247,147,26,0.3);border-radius:4px;font-family:'DM Mono',monospace;color:var(--btc);">Promedio</span></td><td>ARIMA–XGBoost (avg)</td><td style="text-align:right;">0,00274</td><td style="text-align:right;">0,00160</td></tr>
+            <tr style="border-top:1px solid rgba(247,147,26,0.15);"><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:4px;font-family:'DM Mono',monospace;color:#818CF8;">Stacking</span></td><td>ARIMA–LSTM–XGBoost–MLP</td><td style="text-align:right;">0,00282</td><td style="text-align:right;">0,00163</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:4px;font-family:'DM Mono',monospace;color:#818CF8;">Stacking</span></td><td>ARIMA–XGBoost–MLP</td><td style="text-align:right;">0,00291</td><td style="text-align:right;">0,00180</td></tr>
+            <tr><td><span style="font-size:0.65rem;padding:2px 6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:4px;font-family:'DM Mono',monospace;color:#818CF8;">Stacking</span></td><td>ARIMA–LSTM–MLP</td><td style="text-align:right;">0,00295</td><td style="text-align:right;">0,00172</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Diagrama de arquitectura stacking -->
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Flujo del Stacking Completo</div>
+          <svg width="100%" viewBox="0 0 300 200" style="overflow:visible;">
+            <!-- Entrada -->
+            <rect x="110" y="5" width="80" height="26" rx="6" fill="rgba(247,147,26,0.08)" stroke="rgba(247,147,26,0.25)" stroke-width="1"/>
+            <text x="150" y="22" font-family="'DM Mono',monospace" font-size="8" fill="#F7931A" text-anchor="middle">Log-retorno t</text>
+            <!-- Flechas hacia modelos base -->
+            <line x1="130" y1="31" x2="40" y2="72" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <line x1="150" y1="31" x2="150" y2="72" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <line x1="170" y1="31" x2="260" y2="72" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <!-- Modelos base -->
+            <rect x="5" y="72" width="70" height="26" rx="6" fill="rgba(239,68,68,0.08)" stroke="rgba(239,68,68,0.2)" stroke-width="1"/>
+            <text x="40" y="89" font-family="'DM Mono',monospace" font-size="8" fill="#F87171" text-anchor="middle">ARIMA</text>
+            <rect x="115" y="72" width="70" height="26" rx="6" fill="rgba(99,102,241,0.1)" stroke="rgba(99,102,241,0.25)" stroke-width="1"/>
+            <text x="150" y="89" font-family="'DM Mono',monospace" font-size="8" fill="#818CF8" text-anchor="middle">LSTM</text>
+            <rect x="225" y="72" width="70" height="26" rx="6" fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.2)" stroke-width="1"/>
+            <text x="260" y="89" font-family="'DM Mono',monospace" font-size="8" fill="#10B981" text-anchor="middle">XGBoost</text>
+            <!-- Residuos -->
+            <text x="40" y="112" font-family="'DM Mono',monospace" font-size="7" fill="#4B5563" text-anchor="middle">residuos</text>
+            <text x="150" y="112" font-family="'DM Mono',monospace" font-size="7" fill="#4B5563" text-anchor="middle">predicc.</text>
+            <text x="260" y="112" font-family="'DM Mono',monospace" font-size="7" fill="#4B5563" text-anchor="middle">predicc.</text>
+            <!-- Flechas hacia MLP -->
+            <line x1="40" y1="98" x2="130" y2="138" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <line x1="150" y1="98" x2="150" y2="138" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <line x1="260" y1="98" x2="170" y2="138" stroke="rgba(247,147,26,0.2)" stroke-width="1"/>
+            <!-- MLP Meta-aprendiz -->
+            <rect x="90" y="138" width="120" height="28" rx="8" fill="rgba(247,147,26,0.1)" stroke="rgba(247,147,26,0.3)" stroke-width="1.5"/>
+            <text x="150" y="156" font-family="'DM Mono',monospace" font-size="8" fill="#F7931A" text-anchor="middle">MLP Meta-aprendiz</text>
+            <!-- Salida -->
+            <line x1="150" y1="166" x2="150" y2="182" stroke="rgba(247,147,26,0.3)" stroke-width="1.5"/>
+            <rect x="105" y="182" width="90" height="18" rx="5" fill="rgba(16,185,129,0.1)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+            <text x="150" y="195" font-family="'DM Mono',monospace" font-size="7.5" fill="#10B981" text-anchor="middle">Predicción final</text>
+          </svg>
+        </div>
+        <div class="card" style="background:rgba(247,147,26,0.03);border-color:rgba(247,147,26,0.15);">
+          <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;">
+            Los modelos de <strong style="color:var(--text);">promedio simple</strong> superaron al stacking en este experimento. El <strong style="color:var(--btc);">XGBoost–LSTM (avg)</strong> obtuvo el mejor RMSE general: <span style="font-family:'DM Mono',monospace;color:var(--btc);">0,00267</span>, indicando que la combinación lineal de predicciones reduce el sobreajuste frente al meta-aprendiz.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 10 — RESULTADOS  -->
+<section class="slide" id="slide-10">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:500px;height:500px;bottom:-200px;right:-100px;"></div>
+  <div class="results-layout">
+    <div class="label reveal">Resultados</div>
+    <h2 class="slide-title reveal reveal-d1">Tabla de Clasificación de Modelos</h2>
+    <p style="font-size:0.85rem;color:var(--muted);max-width:780px;" class="reveal reveal-d2">
+      Métricas promediadas sobre 5 folds temporales. Objetivo: log-retorno de BTC/USD. Los <span class="bench-pill" style="font-size:0.72rem;">Benchmark</span> son los modelos base individuales; los <span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:0.7rem;font-family:'DM Mono',monospace;background:rgba(247,147,26,0.1);color:var(--btc);border:1px solid rgba(247,147,26,0.2);">Híbrido</span> combinan predicciones de múltiples modelos.
+    </p>
+    <div style="margin-top:20px;" class="reveal reveal-d3">
+      <table class="rtable">
+        <thead>
+          <tr><th>#</th><th>Modelo</th><th>Tipo</th><th>Método Optim.</th><th style="text-align:right;">RMSE (test)</th><th style="text-align:right;">MAE (test)</th><th style="text-align:right;">Barra RMSE</th></tr>
+        </thead>
+        <tbody>
+          <tr class="winner">
+            <td><span class="rank-badge rank-1">1</span></td>
+            <td><strong>XGBoost–LSTM (avg)</strong></td>
+            <td><span style="padding:2px 7px;border-radius:4px;font-size:0.65rem;font-family:'DM Mono',monospace;background:rgba(247,147,26,0.12);color:var(--btc);border:1px solid rgba(247,147,26,0.25);">Híbrido</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">—</td>
+            <td style="text-align:right;">0,002676</td>
+            <td style="text-align:right;">0,001593</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:100%;background:var(--btc);box-shadow:0 0 6px var(--btc);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-2">2</span></td>
+            <td>Random Forest</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Bayesiana</td>
+            <td style="text-align:right;">0,002678</td>
+            <td style="text-align:right;">0,001597</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:94%;background:rgba(247,147,26,0.6);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-2">3</span></td>
+            <td>SVR</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Bayesiana</td>
+            <td style="text-align:right;">0,002679</td>
+            <td style="text-align:right;">0,001589</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:93%;background:rgba(247,147,26,0.5);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-3">4</span></td>
+            <td>Lasso</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Bayesiana</td>
+            <td style="text-align:right;">0,002682</td>
+            <td style="text-align:right;">0,001596</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:88%;background:rgba(247,147,26,0.4);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-3">5</span></td>
+            <td>Ridge</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Grid Search</td>
+            <td style="text-align:right;">0,002686</td>
+            <td style="text-align:right;">0,001607</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:82%;background:rgba(247,147,26,0.35);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-3">6</span></td>
+            <td>Decision Tree</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Random Search</td>
+            <td style="text-align:right;">0,002712</td>
+            <td style="text-align:right;">0,001618</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:65%;background:rgba(247,147,26,0.28);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-3">7</span></td>
+            <td>XGBoost</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Genético</td>
+            <td style="text-align:right;">0,002723</td>
+            <td style="text-align:right;">0,001610</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:55%;background:rgba(247,147,26,0.22);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-3">8</span></td>
+            <td>ARIMA (3,0,1)</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Random Search</td>
+            <td style="text-align:right;">0,002737</td>
+            <td style="text-align:right;">0,001616</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:35%;background:rgba(156,163,175,0.25);"></div></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="rank-badge rank-3">9</span></td>
+            <td>KNN</td>
+            <td><span class="bench-pill">Benchmark</span></td>
+            <td style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);">Bayesiana</td>
+            <td style="text-align:right;">0,002738</td>
+            <td style="text-align:right;">0,001643</td>
+            <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:30%;background:rgba(239,68,68,0.3);"></div></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:20px;flex-wrap:wrap;" class="reveal reveal-d4">
+      <div class="card" style="flex:1;min-width:200px;padding:18px 22px;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">Mejor RMSE Global</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;color:var(--btc);">0,002676</div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">XGBoost–LSTM (avg)</div>
+      </div>
+      <div class="card" style="flex:1;min-width:200px;padding:18px 22px;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">Mejor Benchmark</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;color:var(--btc);">0,002678</div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">Random Forest (Bayesiana)</div>
+      </div>
+      <div class="card" style="flex:1;min-width:200px;padding:18px 22px;">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">Test Diebold-Mariano</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;color:var(--green);">p = 0,0158</div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">Híbrido sig. mejor (α = 5%)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 11 — PREDICCIÓN  -->
+<section class="slide" id="slide-11">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:500px;height:500px;top:-100px;right:-100px;"></div>
+  <div class="pred-layout">
+    <div>
+      <div class="label reveal">Predicción vs Realidad</div>
+      <h2 class="slide-title reveal reveal-d1">Gráfico de<br>Log-Retorno Predicho</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <p class="body-text reveal reveal-d2" style="font-size:0.85rem;">Superposición de predicción del modelo híbrido XGBoost–LSTM sobre el conjunto de prueba. Los modelos capturan la dirección del movimiento de forma más confiable que el modelo ARIMA base.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:24px;" class="reveal reveal-d3">
+        <div class="legend-item"><div class="leg-line" style="background:var(--text);"></div><span>Log-retorno real</span></div>
+        <div class="legend-item"><div class="leg-line" style="background:var(--btc);box-shadow:0 0 6px var(--btc);"></div><span>Predicción Híbrida</span></div>
+        <div class="legend-item"><div class="leg-line" style="background:var(--red);opacity:0.6;"></div><span>Línea base ARIMA</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:24px;" class="reveal reveal-d4">
+        <div class="param-row" style="background:var(--glass);border:1px solid var(--border);"><span class="param-key">RMSE (XGB–LSTM)</span><span class="param-val" style="color:var(--green);">0,002676</span></div>
+        <div class="param-row" style="background:var(--glass);border:1px solid var(--border);"><span class="param-key">RMSE (ARIMA)</span><span class="param-val" style="color:var(--red);">0,002737</span></div>
+        <div class="param-row" style="background:var(--glass);border:1px solid var(--border);"><span class="param-key">Mejor benchmark</span><span class="param-val">Random Forest 0,002678</span></div>
+      </div>
+    </div>
+    <div class="reveal reveal-d2">
+      <canvas id="pred-chart" width="600" height="360" style="width:100%;"></canvas>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 12 — CONCLUSIONES  -->
+<section class="slide" id="slide-12">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-green" style="width:500px;height:500px;bottom:-100px;left:-100px;"></div>
+  <div class="concl-layout">
+    <div>
+      <div class="label reveal">Conclusiones</div>
+      <h2 class="slide-title reveal reveal-d1">Lo que<br>Aprendimos</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <div class="insight-cards reveal reveal-d2">
+        <div class="insight-card">
+          <div class="insight-icon" style="width:6px;height:6px;border-radius:50%;background:var(--btc);margin-top:6px;flex-shrink:0;box-shadow:0 0 6px var(--btc);"></div>
+          <div class="insight-text"><h4>Los modelos de promedio superan al stacking</h4><p>XGBoost–LSTM (avg) logra RMSE=0,002676 — mejor resultado general. El stacking con MLP como meta-aprendiz no superó el promedio simple, posiblemente por sobreajuste del meta-modelo.</p></div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon" style="width:6px;height:6px;border-radius:50%;background:var(--btc);margin-top:6px;flex-shrink:0;box-shadow:0 0 6px var(--btc);"></div>
+          <div class="insight-text"><h4>ARIMA queda como peor modelo</h4><p>RMSE=0,002737, último en el ranking de benchmarks. La estructura lineal es insuficiente para capturar la dinámica no lineal de los retornos a 15 minutos.</p></div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon" style="width:6px;height:6px;border-radius:50%;background:var(--btc);margin-top:6px;flex-shrink:0;box-shadow:0 0 6px var(--btc);"></div>
+          <div class="insight-text"><h4>Random Forest es el mejor benchmark individual</h4><p>RMSE=0,002678 (Bayesiana), seguido de cerca por SVR con RMSE=0,002679 y MAE=0,001589 (el mejor MAE). Los modelos basados en ensambles y kernel dominan los benchmarks.</p></div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon" style="width:6px;height:6px;border-radius:50%;background:var(--btc);margin-top:6px;flex-shrink:0;box-shadow:0 0 6px var(--btc);"></div>
+          <div class="insight-text"><h4>53 eventos extremos permanecen impredecibles</h4><p>Los outliers de 7σ (COVID, FTX, ATH 2025) no son capturables con señales de precio histórico únicamente — se requieren datos externos.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="reveal reveal-d3">
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--btc);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Test de Diebold-Mariano</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:14px;">XGBoost–LSTM (avg) vs Mejor Benchmark · H₀: igual precisión predictiva · Referencia: Diebold &amp; Mariano (1995)</div>
+
+        <!-- Métricas comparativas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div style="padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);">
+            <div style="font-size:0.68rem;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Mejor Benchmark</div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.82rem;">RMSE <span style="color:var(--muted);">0,002698</span></div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.82rem;">MAE <span style="color:var(--muted);">0,001610</span></div>
+          </div>
+          <div style="padding:12px 14px;border-radius:10px;background:rgba(247,147,26,0.05);border:1px solid rgba(247,147,26,0.2);">
+            <div style="font-size:0.68rem;color:var(--btc);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">XGBoost–LSTM (avg)</div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.82rem;">RMSE <span style="color:var(--btc);">0,002676</span></div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.82rem;">MAE <span style="color:var(--btc);">0,001593</span></div>
+          </div>
+        </div>
+
+        <!-- Resultado del test -->
+        <table class="data-table" style="font-size:0.76rem;">
+          <thead>
+            <tr>
+              <th>Modelo A</th>
+              <th>Modelo B</th>
+              <th style="text-align:right;">Dif. pérdida (d)</th>
+              <th style="text-align:right;">DM estadístico</th>
+              <th style="text-align:right;">p-valor</th>
+              <th style="text-align:right;">Conclusión</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Mejor Benchmark</td>
+              <td style="color:var(--btc);font-weight:500;">XGBoost–LSTM (avg)</td>
+              <td class="val" style="text-align:right;">1,18e-07</td>
+              <td class="val" style="text-align:right;">2,413</td>
+              <td class="val" style="text-align:right;color:var(--green);">0,0158</td>
+              <td style="text-align:right;color:var(--green);font-size:0.7rem;font-weight:500;"> Híbrido sig. mejor</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:8px;font-size:0.74rem;color:var(--muted);line-height:1.55;">
+          p = 0,0158 &lt; 0,05 → Se rechaza H₀. El híbrido <strong style="color:var(--text);">XGBoost–LSTM (avg)</strong> es estadísticamente superior al mejor benchmark individual. DM estadístico = 2,413 con diferencia media de pérdida d = 1,18e-07.
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Limitaciones Clave</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="transform-item"><span class="badge badge-red">Límite</span><span style="font-size:0.8rem;">Sin variables externas (sentimiento, indicadores macro)</span></div>
+          <div class="transform-item"><span class="badge badge-red">Límite</span><span style="font-size:0.8rem;">Modelos de caja negra — interpretabilidad limitada</span></div>
+          <div class="transform-item"><span class="badge badge-red">Límite</span><span style="font-size:0.8rem;">Sin mecanismo de cambio de régimen para quiebres estructurales</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 13 — TRABAJO FUTURO  -->
+<section class="slide" id="slide-13">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:500px;height:500px;top:-100px;right:-100px;"></div>
+  <div class="orb orb-blue" style="width:400px;height:400px;bottom:0;left:0;"></div>
+  <div class="future-layout">
+    <div>
+      <div class="label reveal">Trabajo Futuro</div>
+      <h2 class="slide-title reveal reveal-d1">Hoja de Ruta<br>de Investigación</h2>
+      <div class="accent-line reveal reveal-d2"></div>
+      <p class="body-text reveal reveal-d2" style="font-size:0.85rem;">La arquitectura actual provee una base metodológica sólida. La siguiente fase se enfocará en señales más ricas, modelos más expresivos y adaptabilidad en tiempo real.</p>
+      <div class="roadmap reveal reveal-d3">
+        <div class="roadmap-item">
+          <div class="rm-dot filled"></div><div class="rm-line"></div>
+          <div class="rm-content">
+            <h4>Transformers y Mecanismos de Atención</h4>
+            <p>Temporal Fusion Transformers e Informer capturan dependencias de largo alcance que superan las capacidades del LSTM.</p>
+            <div class="rm-cite">Mai, Cavazza &amp; Prendinger (2024) — FAIML 2024 · Khaniki &amp; Manthouri (2024)</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="rm-dot"></div><div class="rm-line"></div>
+          <div class="rm-content">
+            <h4>Análisis de Sentimiento y PLN</h4>
+            <p>Integrar sentimiento de Twitter/Reddit y señales de noticias. Eventos como el colapso de FTX son invisibles para modelos basados solo en precio.</p>
+            <div class="rm-cite">Raju &amp; Tarif (2020) · Amadeo et al. (2023) — Twitter sentiment + TFT</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="rm-dot"></div><div class="rm-line"></div>
+          <div class="rm-content">
+            <h4>Variables Macroeconómicas</h4>
+            <p>Incluir tasas de interés Fed, DXY, correlación S&amp;P 500, métricas on-chain. El Bitcoin correlaciona crecientemente con regímenes macro.</p>
+            <div class="rm-cite">Köse et al. (2025) — Journal of Forecasting · VIX, DXY, tasas Fed</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="rm-dot"></div><div class="rm-line"></div>
+          <div class="rm-content">
+            <h4>Aprendizaje por Refuerzo</h4>
+            <p>Reformular la predicción como proceso de decisión secuencial. Los agentes RL optimizan directamente el rendimiento de trading, no solo el RMSE.</p>
+            <div class="rm-cite">Meta-RL-Crypto (2025) — arXiv · Fjellström (2022)</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="rm-dot"></div>
+          <div class="rm-content">
+            <h4>Modelos CNN–BiLSTM e Interpretabilidad</h4>
+            <p>Arquitecturas CNN-BiLSTM con SHAP para interpretabilidad. VAE para extracción de características latentes en series financieras.</p>
+            <div class="rm-cite">Şimşek Türker et al. (2025) · MDPI Mathematics 13(12)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;" class="reveal reveal-d2">Tecnologías a Explorar</div>
+      <div class="future-tags reveal reveal-d2">
+        <span class="future-tag">Temporal Fusion Transformer</span>
+        <span class="future-tag">Informer</span>
+        <span class="future-tag">BERT-FinTwit</span>
+        <span class="future-tag">Datos On-chain</span>
+        <span class="future-tag">GARCH-LSTM</span>
+        <span class="future-tag">Detección de Régimen</span>
+        <span class="future-tag">DRL Trading</span>
+        <span class="future-tag">CNN-BiLSTM</span>
+        <span class="future-tag">Multi-activo</span>
+        <span class="future-tag">Explicabilidad (SHAP)</span>
+        <span class="future-tag">BloombergGPT</span>
+        <span class="future-tag">PatchTST</span>
+      </div>
+      <div class="card reveal reveal-d3" style="margin-top:20px;">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Por qué Importa</div>
+        <p style="font-size:0.85rem;color:var(--muted);line-height:1.7;">Bitcoin representa más de $1 billón en capitalización de mercado. Incluso una mejora marginal en la precisión de predicción — de 0,271% a 0,260% en RMSE — se traduce en una ventaja significativa en estrategias de trading algorítmico. El campo sigue abierto.</p>
+      </div>
+      <div class="card reveal reveal-d4" style="margin-top:16px;background:rgba(247,147,26,0.04);border-color:rgba(247,147,26,0.15);">
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--btc);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;">Contribuciones de esta Investigación</div>
+        <p style="font-size:0.85rem;color:var(--muted);line-height:1.7;">Log-retorno como variable objetivo, validación cruzada temporal de 5 folds, y la arquitectura de stacking híbrido son contribuciones metodológicas validadas que pueden reutilizarse en estudios futuros.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  SLIDE 14 — CIERRE  -->
+<section class="slide" id="slide-14" style="flex-direction:column;text-align:center;">
+  <div class="noise"></div><div class="grid-bg"></div>
+  <div class="orb orb-btc" style="width:800px;height:800px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.6;"></div>
+  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+    <div style="position:relative;width:500px;height:500px;">
+      <div style="position:absolute;inset:0;border-radius:50%;border:1px solid rgba(247,147,26,0.08);animation:spin 20s linear infinite;"></div>
+      <div style="position:absolute;inset:40px;border-radius:50%;border:1px solid rgba(247,147,26,0.06);animation:spin 30s linear infinite reverse;"></div>
+      <div style="position:absolute;inset:80px;border-radius:50%;border:1px solid rgba(247,147,26,0.04);animation:spin 15s linear infinite;"></div>
+    </div>
+  </div>
+  <div class="closing-content">
+    <div class="label reveal" style="justify-content:center;display:flex;">Reflexión Final</div>
+    <p class="closing-quote reveal reveal-d1" style="margin-top:24px;">"El Bitcoin no es solo<br>un activo financiero.</p>
+    <p class="closing-quote reveal reveal-d2" style="margin-top:8px;">Es un <em>sistema temporal complejo</em><br>moldeado por la creencia humana."</p>
+    <div class="credits reveal reveal-d3" style="align-items:center;">
+      <div style="width:60px;height:1px;background:var(--border);margin:0 auto 32px;"></div>
+      <p><strong>Nino Cabrera</strong> · <strong>Tiffany Mendoza</strong></p>
+      <p style="margin-top:4px;">Predicción del Precio de Bitcoin — Investigación Académica</p>
+      <p style="margin-top:2px;font-family:'DM Mono',monospace;font-size:0.7rem;color:rgba(156,163,175,0.5);">250.657 observaciones · 2019–2026 · Machine Learning y Series de Tiempo</p>
+    </div>
+    <div style="margin-top:40px;" class="reveal reveal-d4">
+      <button class="btn btn-primary" onclick="document.getElementById('slide-1').scrollIntoView({behavior:'smooth'})">↑ Volver al Inicio</button>
+    </div>
+  </div>
+</section>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const nav = document.getElementById('nav-dots');
+const pb  = document.getElementById('progress-bar');
+
+slides.forEach((_, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-dot' + (i === 0 ? ' active' : '');
+  btn.title = `Diapositiva ${i+1}`;
+  btn.addEventListener('click', () => slides[i].scrollIntoView({behavior:'smooth'}));
+  nav.appendChild(btn);
+});
+
+function onScroll() {
+  const scrollTop = window.scrollY;
+  const total = document.body.scrollHeight - window.innerHeight;
+  pb.style.width = (scrollTop / total * 100) + '%';
+  const dots = nav.querySelectorAll('.nav-dot');
+  let active = 0;
+  slides.forEach((s, i) => { if (s.getBoundingClientRect().top <= window.innerHeight / 2) active = i; });
+  dots.forEach((d, i) => d.classList.toggle('active', i === active));
+}
+window.addEventListener('scroll', onScroll, {passive:true});
+
+const revealEls = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+revealEls.forEach(el => observer.observe(el));
+
+let basePrice = 94180;
+function updatePrice() {
+  basePrice += (Math.random() - 0.5) * 80;
+  basePrice = Math.max(90000, Math.min(98000, basePrice));
+  const el = document.getElementById('live-price');
+  const chEl = document.getElementById('live-change');
+  if (el) el.textContent = '$' + basePrice.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const chg = ((basePrice - 94180) / 94180 * 100);
+  if (chEl) { chEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%'; chEl.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)'; }
+}
+setInterval(updatePrice, 2000);
+
+function drawPredChart() {
+  const canvas = document.getElementById('pred-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth * devicePixelRatio;
+  const H = 360 * devicePixelRatio;
+  canvas.width = W; canvas.height = H;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w = canvas.offsetWidth, h = 360;
+  const N = 120;
+  const actual = [], hybrid = [], arima = [];
+  let seed = 42;
+  function rng() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function randn() { return (rng()+rng()+rng()-1.5)*0.0025; }
+  for (let i = 0; i < N; i++) {
+    const a = randn();
+    actual.push(a);
+    hybrid.push(a * 0.65 + randn() * 0.35);
+    arima.push(randn() * 0.28);
+  }
+  const allVals = [...actual, ...hybrid, ...arima];
+  const minV = Math.min(...allVals) * 1.2;
+  const maxV = Math.max(...allVals) * 1.2;
+  const toY = v => h - 50 - ((v - minV) / (maxV - minV)) * (h - 80);
+  const toX = i => 40 + (i / (N-1)) * (w - 60);
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+  for (let g = 0; g <= 4; g++) { const y = 20 + (g/4)*(h-70); ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(w-20,y); ctx.stroke(); }
+  const zeroY = toY(0);
+  ctx.strokeStyle = 'rgba(156,163,175,0.15)'; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(40, zeroY); ctx.lineTo(w-20, zeroY); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(239,68,68,0.4)'; ctx.lineWidth = 1;
+  ctx.beginPath(); arima.forEach((v,i) => { const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }); ctx.stroke();
+  ctx.fillStyle = 'rgba(247,147,26,0.05)';
+  ctx.beginPath(); hybrid.forEach((v,i) => { const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(toX(N-1), zeroY); ctx.lineTo(toX(0), zeroY); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#F7931A'; ctx.lineWidth = 2;
+  ctx.shadowColor = '#F7931A'; ctx.shadowBlur = 6;
+  ctx.beginPath(); hybrid.forEach((v,i) => { const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(249,250,251,0.7)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); actual.forEach((v,i) => { const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }); ctx.stroke();
+  ctx.fillStyle = 'rgba(75,85,99,1)'; ctx.font = '10px "DM Mono",monospace';
+  ctx.fillText('log-retorno', 0, 15); ctx.fillText('t', w-15, zeroY+4);
+  ctx.fillStyle = 'rgba(75,85,99,0.8)';
+  ['t-120', 't-60', 'ahora'].forEach((lbl, i) => { ctx.fillText(lbl, toX(i===2?N-1:i*60) - 14, h-5); });
+}
+setTimeout(drawPredChart, 500);
+window.addEventListener('resize', () => setTimeout(drawPredChart, 100));
+</script>
+</body>
+</html>

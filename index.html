@@ -769,155 +769,109 @@
   </div>
 </section>
 
-<!--  SLIDE 7b — COMBINACIONES HÍBRIDAS  -->
+<!--  SLIDE 7b — COMBINACIONES PREVIAS  -->
 <section class="slide" id="slide-7b">
   <div class="noise"></div><div class="grid-bg"></div>
-  <div class="orb orb-btc" style="width:500px;height:500px;bottom:-150px;left:-100px;opacity:0.6;"></div>
-  <div class="orb orb-blue" style="width:400px;height:400px;top:-100px;right:-100px;"></div>
+  <div class="orb orb-blue" style="width:500px;height:500px;top:-150px;right:-100px;opacity:0.5;"></div>
+  <div class="orb" style="width:400px;height:400px;bottom:-100px;left:-100px;background:rgba(239,68,68,0.04);filter:blur(80px);"></div>
 
   <div style="max-width:1150px;width:100%;position:relative;z-index:2;">
-    <div class="label reveal">Arquitecturas Híbridas</div>
-    <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;margin-bottom:8px;">
-      <h2 class="slide-title reveal reveal-d1" style="margin-bottom:0;">Combinaciones<br>Evaluadas</h2>
-    </div>
-    <p style="font-size:0.85rem;color:var(--muted);max-width:750px;" class="reveal reveal-d2">
-      Cada combinación híbrida apila modelos base (ARIMA, LSTM, XGBoost, MLP) como capas de predicción. Los errores del modelo lineal son corregidos por el no-lineal, y un meta-aprendiz MLP combina todas las señales. Referencia: <em style="color:var(--btc);">Ogunbona &amp; Alayande (2026)</em>.
+    <div class="label reveal">Exploración Previa</div>
+    <h2 class="slide-title reveal reveal-d1" style="margin-bottom:10px;">Combinaciones Híbridas<br>Previas Evaluadas</h2>
+    <p style="font-size:0.85rem;color:var(--muted);max-width:760px;margin-bottom:28px;" class="reveal reveal-d2">
+      Antes de adoptar la arquitectura de Ogunbona &amp; Alayande (2026), se exploraron combinaciones híbridas basadas en literatura previa. Ninguna superó a los benchmarks individuales en términos de RMSE sobre el conjunto de prueba — por lo que se descartaron del análisis final.
     </p>
 
-    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:28px;margin-top:24px;" class="reveal reveal-d3">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;" class="reveal reveal-d3">
 
-      <!-- Tabla de combinaciones -->
+      <!-- Left: list of combinations -->
       <div class="card">
-        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;">Combinaciones Implementadas</div>
-        <table class="rtable" style="font-size:0.8rem;">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nombre</th>
-              <th>Modelos Base</th>
-              <th>Meta</th>
-              <th style="text-align:right;">RMSE</th>
-              <th style="text-align:right;">MAE</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- PROMEDIOS -->
-            <tr style="border-top:1px solid rgba(247,147,26,0.1);">
-              <td colspan="6" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--btc);padding:8px 14px 4px;letter-spacing:0.1em;">PROMEDIO SIMPLE (Average Ensemble)</td>
-            </tr>
-            <tr class="winner">
-              <td style="color:var(--btc);">H1</td>
-              <td><strong>XGBoost–LSTM</strong></td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">XGB + LSTM</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
-              <td style="text-align:right;">0,00267</td>
-              <td style="text-align:right;">0,00159</td>
-            </tr>
-            <tr>
-              <td>S1</td>
-              <td>ARIMA–XGBoost–MLP</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA+XGB</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP</td>
-              <td style="text-align:right;">0,00269</td>
-              <td style="text-align:right;">0,00164</td>
-            </tr>
-            <tr>
-              <td>H2</td>
-              <td>ARIMA–LSTM</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + LSTM</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
-              <td style="text-align:right;">0,00270</td>
-              <td style="text-align:right;">0,00160</td>
-            </tr>
-            <tr>
-              <td>H3</td>
-              <td>ARIMA–XGBoost</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + XGB</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
-              <td style="text-align:right;">0,00271</td>
-              <td style="text-align:right;">0,00160</td>
-            </tr>
-            <tr>
-              <td>S2</td>
-              <td>ARIMA–LSTM–XGBoost–MLP</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA+LSTM+XGB</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP</td>
-              <td style="text-align:right;">0,00276</td>
-              <td style="text-align:right;">0,00163</td>
-            </tr>
-            <tr>
-              <td>S3</td>
-              <td>ARIMA–LSTM–MLP</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + LSTM</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP</td>
-              <td style="text-align:right;">0,00280</td>
-              <td style="text-align:right;">0,00163</td>
-            </tr>
-            <!-- Average remainder -->
-            <tr style="border-top:1px solid rgba(247,147,26,0.08);">
-              <td>H4</td>
-              <td>MLP–XGBoost</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP + XGB</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
-              <td style="text-align:right;">0,00281</td>
-              <td style="text-align:right;">0,00163</td>
-            </tr>
-            <tr>
-              <td>H5</td>
-              <td>MLP–LSTM</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">MLP + LSTM</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
-              <td style="text-align:right;">0,00281</td>
-              <td style="text-align:right;">0,00163</td>
-            </tr>
-            <tr>
-              <td>H6</td>
-              <td>ARIMA–MLP</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">ARIMA + MLP</td>
-              <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">avg</td>
-              <td style="text-align:right;">0,00283</td>
-              <td style="text-align:right;">0,00164</td>
-            </tr>
-          </tbody>
-        </table>
+        <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:18px;">Arquitecturas exploradas — sin resultados publicados</div>
+        <div style="display:flex;flex-direction:column;gap:0;">
+
+          <!-- Group 1: ARIMA residuals -->
+          <div style="font-family:'DM Mono',monospace;font-size:0.63rem;color:rgba(156,163,175,0.5);letter-spacing:0.1em;text-transform:uppercase;padding:10px 0 6px;border-bottom:1px solid rgba(255,255,255,0.04);">Residuos de ARIMA</div>
+          <div style="display:flex;flex-direction:column;gap:0;">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">01</span>
+              <span style="font-size:0.85rem;">ARIMA + Decision Random Forest <span style="font-size:0.75rem;color:var(--muted);">(residuos de ARIMA)</span></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">02</span>
+              <span style="font-size:0.85rem;">ARIMA + XGBoost <span style="font-size:0.75rem;color:var(--muted);">(residuos de ARIMA)</span></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">03</span>
+              <span style="font-size:0.85rem;">ARIMA + SVR <span style="font-size:0.75rem;color:var(--muted);">(residuos de ARIMA)</span></span>
+            </div>
+          </div>
+
+          <!-- Group 2: SVR-based stacking -->
+          <div style="font-family:'DM Mono',monospace;font-size:0.63rem;color:rgba(156,163,175,0.5);letter-spacing:0.1em;text-transform:uppercase;padding:10px 0 6px;border-bottom:1px solid rgba(255,255,255,0.04);margin-top:4px;">Stacking basado en SVR</div>
+          <div style="display:flex;flex-direction:column;gap:0;">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">04</span>
+              <span style="font-size:0.85rem;">SVR + XGBoost</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">05</span>
+              <span style="font-size:0.85rem;">SVR + RF <span style="font-size:0.75rem;color:var(--muted);">meta-learner Ridge</span></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">06</span>
+              <span style="font-size:0.85rem;">SVR + XGBoost <span style="font-size:0.75rem;color:var(--muted);">meta-learner Ridge</span></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">07</span>
+              <span style="font-size:0.85rem;">SVR + XGBoost <span style="font-size:0.75rem;color:var(--muted);">meta-learner Lasso</span></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">08</span>
+              <span style="font-size:0.85rem;">SVR Lineal + XGBoost <span style="font-size:0.75rem;color:var(--muted);">meta-learner Lasso</span></span>
+            </div>
+          </div>
+
+          <!-- Group 3: Boosting ensemble -->
+          <div style="font-family:'DM Mono',monospace;font-size:0.63rem;color:rgba(156,163,175,0.5);letter-spacing:0.1em;text-transform:uppercase;padding:10px 0 6px;border-bottom:1px solid rgba(255,255,255,0.04);margin-top:4px;">Ensamble de Boosting</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;">
+            <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);min-width:20px;">09</span>
+            <span style="font-size:0.85rem;">CatBoost + AdaBoost + LightGBM <span style="font-size:0.75rem;color:var(--muted);">meta-learner Lasso</span></span>
+          </div>
+
+        </div>
       </div>
 
-      <!-- Panel derecho: insight + leyenda visual -->
+      <!-- Right: rationale + outcome -->
       <div style="display:flex;flex-direction:column;gap:16px;">
 
-        <!-- Mejor vs peor -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="card" style="padding:18px 20px;background:rgba(247,147,26,0.04);border-color:rgba(247,147,26,0.2);">
-            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;">Mejor Híbrido</div>
-            <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--btc);">XGBoost–LSTM</div>
-            <div style="font-family:'DM Mono',monospace;font-size:0.85rem;margin-top:4px;">RMSE 0,00267</div>
-          </div>
-          <div class="card" style="padding:18px 20px;">
-            <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;letter-spacing:0.08em;text-transform:uppercase;">Peor Stacking</div>
-            <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--muted);">ARIMA–MLP (avg)</div>
-            <div style="font-family:'DM Mono',monospace;font-size:0.85rem;margin-top:4px;">RMSE 0,00283</div>
-          </div>
+        <div class="card" style="background:rgba(239,68,68,0.03);border-color:rgba(239,68,68,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--red);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Resultado</div>
+          <p style="font-size:0.85rem;color:var(--muted);line-height:1.7;">
+            Ninguna de estas combinaciones logró superar a los modelos benchmark individuales. Los resultados no se reportan en detalle para mantener el foco del análisis.
+          </p>
         </div>
 
-        <!-- Insight -->
-        <div class="card" style="background:rgba(16,185,129,0.03);border-color:rgba(16,185,129,0.12);">
-          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--green);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;">Hallazgo Principal</div>
-          <p style="font-size:0.82rem;color:var(--muted);line-height:1.65;">El <strong style="color:var(--text);">promedio simple supera al stacking</strong> en todos los casos. El meta-aprendiz MLP no logra aprender combinaciones óptimas con solo 2–3 señales de entrada, posiblemente por el reducido número de features en el nivel meta.</p>
-        </div>
-
-        <!-- Leyenda de tipos -->
         <div class="card">
-          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Tipos de Combinación</div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Por qué no funcionaron</div>
           <div style="display:flex;flex-direction:column;gap:10px;">
-            <div style="display:flex;gap:10px;align-items:flex-start;">
-              <span style="padding:3px 9px;border-radius:5px;background:rgba(247,147,26,0.1);border:1px solid rgba(247,147,26,0.25);font-size:0.68rem;font-family:'DM Mono',monospace;color:var(--btc);flex-shrink:0;">avg</span>
-              <span style="font-size:0.8rem;color:var(--muted);">Promedio aritmético de las predicciones de cada modelo base. Simple, sin parámetros adicionales.</span>
+            <div class="transform-item" style="padding:12px 14px;">
+              <span class="badge badge-red" style="flex-shrink:0;">Residuos</span>
+              <span style="font-size:0.8rem;">Los residuos de ARIMA sobre log-retornos a 15 min son casi ruido puro — no hay estructura explotable por el segundo modelo.</span>
             </div>
-            <div style="display:flex;gap:10px;align-items:flex-start;">
-              <span style="padding:3px 9px;border-radius:5px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);font-size:0.68rem;font-family:'DM Mono',monospace;color:#818CF8;flex-shrink:0;">MLP</span>
-              <span style="font-size:0.8rem;color:var(--muted);">Red neuronal densa que aprende a ponderar y combinar las predicciones de los modelos base (stacking de dos niveles).</span>
+            <div class="transform-item" style="padding:12px 14px;">
+              <span class="badge badge-red" style="flex-shrink:0;">Meta</span>
+              <span style="font-size:0.8rem;">Los meta-learners (Ridge, Lasso) con solo 2–3 señales de entrada no aprenden combinaciones mejores que el promedio simple.</span>
+            </div>
+            <div class="transform-item" style="padding:12px 14px;">
+              <span class="badge badge-red" style="flex-shrink:0;">Boosting</span>
+              <span style="font-size:0.8rem;">CatBoost, AdaBoost y LightGBM no mostraron ventaja frente a XGBoost solo sobre esta serie de alta frecuencia.</span>
             </div>
           </div>
+        </div>
+
+        <div class="card" style="background:rgba(247,147,26,0.03);border-color:rgba(247,147,26,0.12);">
+          <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--btc);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px;">Decisión tomada</div>
+          <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Se adoptó la arquitectura de <strong style="color:var(--text);">Ogunbona &amp; Alayande (2026)</strong> como marco de referencia principal, implementando las 9 combinaciones de promedio y stacking documentadas en el paper.</p>
         </div>
 
       </div>

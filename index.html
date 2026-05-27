@@ -645,6 +645,11 @@
         background: rgba(247, 147, 26, 0.06);
         border: 1px solid var(--border);
       }
+      .fold-gap {
+        background: transparent;
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
 
       /*  MODELOS  */
       .models-layout {
@@ -1916,8 +1921,8 @@
               <div class="lbl">Valores faltantes (imputados)</div>
             </div>
             <div class="eda-metric">
-              <div class="val">λ=0,96</div>
-              <div class="lbl">Suavizado exponencial óptimo</div>
+              <div class="val">MA(200)</div>
+              <div class="lbl">Media móvil óptima</div>
             </div>
             <div class="eda-metric">
               <div class="val">Lag 1</div>
@@ -2248,48 +2253,50 @@
             <div
               style="
                 display: flex;
-                gap: 8px;
+                gap: 4px;
                 font-family: &quot;DM Mono&quot;, monospace;
                 font-size: 0.7rem;
                 color: var(--muted);
                 margin-bottom: 4px;
+                padding-left: 44px;
               "
             >
-              <span style="width: 40px"></span
-              ><span style="flex: 3.2; text-align: center"
-                >Entrenamiento (~32K)</span
-              ><span style="flex: 1; text-align: center">Val</span
-              ><span style="flex: 1; text-align: center">Test</span>
+              <span style="flex: 1">← Eje temporal →</span>
             </div>
             <div class="fold-row">
               <span class="fold-label">Fold 0</span>
-              <div class="fold-bar fold-train" style="flex: 3.2"></div>
+              <div class="fold-bar fold-train" style="flex: 2"></div>
               <div class="fold-bar fold-val" style="flex: 1"></div>
-              <div class="fold-bar fold-test" style="flex: 1"></div>
+              <div class="fold-bar fold-gap" style="flex: 5"></div>
+              <div class="fold-bar fold-test" style="flex: 2"></div>
             </div>
             <div class="fold-row">
               <span class="fold-label">Fold 1</span>
-              <div class="fold-bar fold-train" style="flex: 3.2"></div>
+              <div class="fold-bar fold-train" style="flex: 3"></div>
               <div class="fold-bar fold-val" style="flex: 1"></div>
-              <div class="fold-bar fold-test" style="flex: 1"></div>
+              <div class="fold-bar fold-gap" style="flex: 4"></div>
+              <div class="fold-bar fold-test" style="flex: 2"></div>
             </div>
             <div class="fold-row">
               <span class="fold-label">Fold 2</span>
-              <div class="fold-bar fold-train" style="flex: 3.2"></div>
+              <div class="fold-bar fold-train" style="flex: 4"></div>
               <div class="fold-bar fold-val" style="flex: 1"></div>
-              <div class="fold-bar fold-test" style="flex: 1"></div>
+              <div class="fold-bar fold-gap" style="flex: 3"></div>
+              <div class="fold-bar fold-test" style="flex: 2"></div>
             </div>
             <div class="fold-row">
               <span class="fold-label">Fold 3</span>
-              <div class="fold-bar fold-train" style="flex: 3.2"></div>
+              <div class="fold-bar fold-train" style="flex: 5"></div>
               <div class="fold-bar fold-val" style="flex: 1"></div>
-              <div class="fold-bar fold-test" style="flex: 1"></div>
+              <div class="fold-bar fold-gap" style="flex: 2"></div>
+              <div class="fold-bar fold-test" style="flex: 2"></div>
             </div>
             <div class="fold-row">
               <span class="fold-label">Fold 4</span>
-              <div class="fold-bar fold-train" style="flex: 3.2"></div>
+              <div class="fold-bar fold-train" style="flex: 6"></div>
               <div class="fold-bar fold-val" style="flex: 1"></div>
-              <div class="fold-bar fold-test" style="flex: 1"></div>
+              <div class="fold-bar fold-gap" style="flex: 1"></div>
+              <div class="fold-bar fold-test" style="flex: 2"></div>
             </div>
             <div
               style="
@@ -2316,7 +2323,7 @@
                     background: rgba(247, 147, 26, 0.4);
                   "
                 ></div>
-                Entrenamiento
+                Entrenamiento (crece)
               </div>
               <div
                 style="
@@ -2335,7 +2342,7 @@
                     background: rgba(247, 147, 26, 0.15);
                   "
                 ></div>
-                Validación
+                Validación (desliza)
               </div>
               <div
                 style="
@@ -2355,7 +2362,7 @@
                     border: 1px solid var(--border);
                   "
                 ></div>
-                Prueba
+                Prueba (fijo)
               </div>
             </div>
           </div>
